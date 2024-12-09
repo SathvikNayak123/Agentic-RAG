@@ -1,7 +1,9 @@
 sentence-transformers
 langchain
-flask
+fastapi
 pypdf
 chromadb
 langchain_community
-langchain_experimental
+langchain_ollama
+langchain_huggingface
+langchain_chroma
