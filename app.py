@@ -14,17 +14,10 @@ class UserQuery(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    """
-    Serve the chat application's HTML page.
-    """
     return templates.TemplateResponse("index.html", {"request": request})
 
 @app.post("/chat")
 async def chat_endpoint(payload: UserQuery = Body(...)):
-    """
-    FastAPI endpoint to handle user query.
-    Expects a POST request with the user query as input.
-    """
     try:
         response = await bot.get_response(payload.user_query)
         return {"answer": response}
