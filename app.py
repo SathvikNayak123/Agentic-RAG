@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Request, Body
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-from rag import FinancialAdvisorBot
+from RAG.rag import FinancialAdvisorBot
 
 bot = FinancialAdvisorBot()
 app = FastAPI()
