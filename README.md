@@ -50,7 +50,7 @@ Built a RAG Medical Assistant with Fine-tuned Llama-3.1-8b model.
    ```
 
 3. **Setup**
-   - Populate the database with financial documents.
+   - Populate the database with medical documents.
    - Generate and store embeddings using the pre-trained LLaMA 3.1 model.
    - Install Ollama & pull model from HuggingFace
         ```bash
