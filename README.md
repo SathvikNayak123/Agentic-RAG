@@ -66,8 +66,8 @@ Built a RAG Medical Assistant with Fine-tuned Llama-3.1-8b model.
 
 ## Result
 
-- The Fine-tuned LLaMA3 model gave an 
+- The Fine-tuned LLaMA3 model gave an **0.29 ROUGE score**
 
-![sample-chat](docs/Screenshot%202024-12-13%20195632.png)
+![sample-chat](docs/Screenshot%202024-12-15%20153236.png)
 
 
