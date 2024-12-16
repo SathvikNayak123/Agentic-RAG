@@ -19,15 +19,15 @@ Built a RAG Medical Assistant with Fine-tuned Llama-3.1-8b model.
 
 ### 1. Language Model
 - **LLaMA 3.1 (8B)** fine-tuned on **medical coversational datasets** using **PEFT (LoRA)** for domain-specific expertise.
-- **Unsloth**: Used for efficient 4-bit quantization, reducing memory and computational costs during training and inference.
+- **Unsloth**: Used for 2x faster fine-tuning and loading model directly in 4-bit, reducing memory and computational costs during training and inference.
     ```bash
     https://GitHub.com/unslothai/unsloth.git
     ```
 - **Ollama**: Used for model integration and serving.
 
 ### 2. RAG Pipeline
-- **LangChain**: Enables integration of the LLaMA model with document retrieval capabilities.
-- **ChromaDB**: Stores and retrieves embeddings for efficient and accurate context-aware responses.
+- **LangChain**: Enables integration of the LLaMA model with document retrieval capabilities and also implement **context-aware responses**.
+- **ChromaDB**: Stores and retrieves embeddings for efficient and accurate responses.
 
 ### 3. Backend
 - **FastAPI**: Provides a robust and asynchronous backend for a seamless chat interface.
@@ -68,6 +68,6 @@ Built a RAG Medical Assistant with Fine-tuned Llama-3.1-8b model.
 
 - The Fine-tuned LLaMA3 model gave an **0.29 ROUGE score**
 
-![sample-chat](docs/Screenshot%202024-12-15%20153236.png)
+![sample-chat](docs/Screenshot%202024-12-16%20160214.png)
 
 
