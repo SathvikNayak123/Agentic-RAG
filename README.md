@@ -3,9 +3,11 @@
 Built an advanced medical assistant chatbot using a fine-tuned LLaMA-3.1-8B model and a Retrieval-Augmented Generation (RAG) pipeline with intelligent agent functionality.
 
 - **RAG Architecture**:
+  
 ![pic1](docs/1_lBVfMJ__9NjgKYiKI6mp4A.png)
 
-- **RAG Architecture:**
+- **Agentic RAG Workflow**:
+
 ![pic2](docs/graph.png)
 
 ## Features
