@@ -3,17 +3,23 @@ from typing_extensions import TypedDict
 from typing import Literal, List
 
 
-class RouteQuery(BaseModel):
-    """Route a user query to the most relevant datasource."""
-    datasource: Literal["vectorstore", "wiki_search"] = Field(
-        ...,
-        description="Given a user question choose to route it to wikipedia or a vectorstore.",
+class AgentState(TypedDict):
+    question: str
+    grades: list[str]
+    llm_output: str
+    documents: list[str]
+    on_topic: bool
+
+class GradeQuestion(BaseModel):
+    """check whether a question is related to Medical context eg. medical terms, diagnosis, symptoms."""
+
+    score: str = Field(
+        description="Question is related to Medical context eg. medical terms, diagnosis, symptoms? If yes -> 'Yes' if not -> 'No'"
     )
 
-class GraphState(TypedDict):
-    """
-    Represents the state of our graph.
-    """
-    question: str
-    generation: str
-    documents: List[str]
+class GradeDocuments(BaseModel):
+    """Boolean values to check for relevance on retrieved documents."""
+
+    score: str = Field(
+        description="Documents are relevant to the question, 'Yes' or 'No'"
+    )

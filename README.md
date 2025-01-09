@@ -1,76 +1,86 @@
-# RAG Medical Assistant
+# Agentic RAG Medical Assistant
 
-Built a RAG Medical Assistant with Fine-tuned Llama-3.1-8b model.
+Built an advanced medical assistant chatbot using a fine-tuned LLaMA-3.1-8B model and a Retrieval-Augmented Generation (RAG) pipeline with intelligent agent functionality.
 
-![architecture](docs/1_lBVfMJ__9NjgKYiKI6mp4A.png)
+- **RAG Architecture**:
+![pic1](docs/1_lBVfMJ__9NjgKYiKI6mp4A.png)
+
+- **RAG Architecture:**
+![pic2](docs/graph.png)
 
 ## Features
 
-- **Context-Aware Responses**: Provides precise medical advice by integrating over **20+ medical resources** through a RAG pipeline.
-- **Efficient Document Retrieval**: Utilizes **LangChain** and **ChromaDB** for optimized and contextually accurate document retrieval.
-- **Fine-Tuned LLaMA 3.1 Model**: Achieved superior performance with a **fine-tuned LLaMA 3.1 8B** model using **LoRA** techniques, achieving a **0.29 ROUGE score**.
-- **Optimized Training**: Leveraged the **Unsloth library** for faster training and fine-tuning with **4-bit quantization**, significantly reducing resource usage without compromising performance.
-- **Model Deployment**: Uploaded the optimized model to **Hugging Face** in **GGUF format**, enabling seamless integration and efficient inference.
-- **Asynchronous Chat Interface**: Built with **FastAPI** to ensure low-latency and seamless user interaction, reducing response time by **40%**.
+- **History-Aware Responses**: Provides precise medical advice by integrating over **20+ medical resources** through a RAG pipeline.
+- **Intelligent Query Routing**: Implemented agents to dynamically route off-topic queries to web search (e.g., Wikipedia) and process on-topic queries through document retrieval pipelines.
+- **Document Relevance Grading**: Graded retrieved documents for relevance, generating responses if relevant or rewriting queries for improved retrieval.
+- **Fine-Tuned LLaMA Model**: Fine-tuned **LLaMA 3.1 8B** using **LoRA**, achieving a **0.29 ROUGE1 score** for accuracy and reliability.
+- **Low-Latency Interface**: Built an asynchronous chat interface with **FastAPI**, reducing response latency by **40%** for a seamless user experience.
 
 ---
 
 ## Tech Stack
 
 ### 1. Language Model
-- **LLaMA 3.1 (8B)** fine-tuned on **medical coversational datasets** using **PEFT (LoRA)** for domain-specific expertise.
-- **Unsloth**: Used for 2x faster fine-tuning and loading model directly in 4-bit, reducing memory and computational costs during training and inference.
-    ```bash
-    https://GitHub.com/unslothai/unsloth.git
-    ```
+
+- **LLaMA 3.1 (8B)** fine-tuned on **medical conversational datasets** using **PEFT (LoRA)** for domain-specific expertise.
+- **Unsloth**: Accelerated fine-tuning with **4-bit quantization**, reducing resource usage without compromising performance.
+  ```bash
+  https://GitHub.com/unslothai/unsloth.git
+  ```
 - **Ollama**: Used for model integration and serving.
 
 ### 2. RAG Pipeline
-- **LangChain**: Enables integration of the LLaMA model with document retrieval capabilities and also implement **context-aware responses**.
-- **ChromaDB**: Stores and retrieves embeddings for efficient and accurate responses.
+
+- **LangChain**: Enabled context-aware responses and integrated the LLaMA model with document retrieval capabilities.
+- **ChromaDB**: Stored and retrieved embeddings for efficient and accurate responses.
 
 ### 3. Backend
-- **FastAPI**: Provides a robust and asynchronous backend for a seamless chat interface.
+
+- **FastAPI**: Provided a robust and asynchronous backend for a seamless chat interface.
 
 ### 4. Other Tools
-- **Hugging Face**: Used for model hosting and inference, including support for GGUF model format.
+
+- **Hugging Face**: Hosted and served the optimized model in **GGUF format** for efficient inference.
 
 ---
 
 ## Setup Instructions
 
 1. **Clone the Repository**
+
    ```bash
-   git clone https://github.com/SathvikNayak123/chatbot.git
+   git clone https://github.com/SathvikNayak123/Agentic-RAG.git
    ```
 
 2. **Install Dependencies**
+
    ```bash
    pip install -r requirements.txt
    ```
 
 3. **Setup**
+
    - Populate the database with medical documents.
-   - Generate and store embeddings using the pre-trained LLaMA 3.1 model.
-   - Install Ollama & pull model from HuggingFace
-        ```bash
-        ollama pull hf.co/sathvik123/llama3-ChatDoc
-        ```
+   - Generate and store embeddings using the fine-tuned LLaMA 3.1 model.
+   - Install Ollama and pull the model from Hugging Face:
+     ```bash
+     ollama pull hf.co/sathvik123/llama3-ChatDoc
+     ```
 
 4. **Run the Application**
+
    ```bash
    uvicorn app:app --reload
    ```
 
 ---
 
-## Result
+## Results
 
-- The Fine-tuned LLaMA3 model gave an **0.29 ROUGE score**
+- **Model Performance**: Achieved a **0.29 ROUGE1 score** with fine-tuned LLaMA 3.1.
 
-- Chat demonstrating accurate RAG responses and **history-awareness**
-![sample-chat](docs/Screenshot%202024-12-16%20160214.png)
+- **RAG Responses**: Demonstrated accurate and history-aware conversational capabilities.
+![pic3](docs/Screenshot%202024-12-16%20160214.png)
 
-- Chat demonstrating **Agent** functionality: routing medical queries to RAG and non-medical queries to Wikipedia.
-![sample-chat](docs/Screenshot%202025-01-09%20194922.png)
-
+- **Agent Functionality**: Effectively routed and processed queries based on topic relevance.
+![pic4](docs/Screenshot%202025-01-09%20222456.png)

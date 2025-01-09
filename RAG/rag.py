@@ -11,21 +11,21 @@ from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_community.utilities import WikipediaAPIWrapper
 from langchain_community.tools import WikipediaQueryRun
-from RAG.agent import RouteQuery, GraphState
+from RAG.agent import AgentState, GradeQuestion, GradeDocuments
+from langchain_core.output_parsers import StrOutputParser
 from langchain_groq import ChatGroq
-from langgraph.graph import END, StateGraph, START
+from langgraph.graph import END, StateGraph
 
-class FinancialAdvisorBot:
+class RAG_chatbot:
     def __init__(self):
         # Initialize the LLaMA model
         self.llm = OllamaLLM(model="hf.co/sathvik123/llama3-ChatDoc")
 
         # for agent
-        groq_key = "SET_GROQ_KEY"
-        router_llm=ChatGroq(groq_api_key=groq_key, model_name="Gemma2-9b-It")
-        self.llm_with_tool = router_llm.with_structured_output(RouteQuery)
+        groq_key = "Groq_KEY"
+        self.groq_llm=ChatGroq(groq_api_key=groq_key, model_name="Gemma2-9b-It")
 
-        api_wrapper=WikipediaAPIWrapper(top_k_results=1,doc_content_chars_max=1000)
+        api_wrapper=WikipediaAPIWrapper(top_k_results=1,doc_content_chars_max=1500)
         self.wiki_query=WikipediaQueryRun(api_wrapper=api_wrapper)
 
         # set up embeddings
@@ -40,14 +40,14 @@ class FinancialAdvisorBot:
             embedding_function=self.embeddings
         ).as_retriever(
             search_type="similarity", 
-            k=3
+            k=5
         )
 
         self.store = {} # stores chat history
         
-        self.chatbot = self.get_chatbot()
-        self.chain = self.router_agent()
-        self.app = self.build_dag()
+        self.get_chatbot()
+         
+        self.build_graph()
 
     def populate_chroma(self):
 
@@ -76,7 +76,7 @@ class FinancialAdvisorBot:
         which can be understood without the chat history. Do NOT answer the question, \
         just reformulate it if needed and otherwise return it as is."""
 
-        self.contextualized_q_prompt = ChatPromptTemplate.from_messages(
+        contextualized_q_prompt = ChatPromptTemplate.from_messages(
             [
                 ("system", contextualize_sys_prompt),
                 MessagesPlaceholder("chat_history"),
@@ -84,7 +84,7 @@ class FinancialAdvisorBot:
             ]
         )
 
-        self.history_aware_retriever = create_history_aware_retriever(self.llm, self.retriever, self.contextualized_q_prompt)
+        self.history_aware_retriever = create_history_aware_retriever(self.llm, self.retriever, contextualized_q_prompt)
 
         qa_sys_prompt = """You are a medical professional. \
         Use the following pieces of retrieved context to answer the question. \
@@ -93,7 +93,7 @@ class FinancialAdvisorBot:
 
         {context}"""
 
-        self.qa_prompt = ChatPromptTemplate.from_messages(
+        qa_prompt = ChatPromptTemplate.from_messages(
             [
                 ("system", qa_sys_prompt),
                 MessagesPlaceholder("chat_history"),
@@ -101,103 +101,171 @@ class FinancialAdvisorBot:
             ]
         )
 
-        self.qa_chain=create_stuff_documents_chain(self.llm, self.qa_prompt)
-        self.rag_chain=create_retrieval_chain(self.history_aware_retriever, self.qa_chain)
+        qa_chain=create_stuff_documents_chain(self.llm, qa_prompt)
+        rag_chain=create_retrieval_chain(self.history_aware_retriever, qa_chain)
 
-        chatbot = RunnableWithMessageHistory(
-            self.rag_chain,
+        self.chatbot = RunnableWithMessageHistory(
+            rag_chain,
             self.get_session_history,
             input_messages_key="input",
             history_messages_key="chat_history",
             output_messages_key="answer",
         )
 
-        return chatbot
+    def retrieve_docs(self, state: AgentState):
+        question = state["question"]
+        documents = self.history_aware_retriever.invoke({"input": question, "chat_history": ""})
+        state["documents"] = [doc.page_content for doc in documents]
+        return state
+    
+    def question_classifier(self, state: AgentState):
+        question = state["question"]
 
-    def router_agent(self):
+        system = """You are a grader assessing the topic a user question. \n
+            Only answer if the question is about one of the following topics:
+            1. Medical Terminology.
+            2. Medical Symptoms and Diagnosis.
 
-        system = """You are an expert at routing a user question to a vectorstore or wikipedia.
-        The vectorstore contains documents related to medical symptoms and diagnosis.
-        Use the vectorstore for questions on these topics. Otherwise, use wiki-search."""
+            Examples: What causes high blood pressure? -> Yes
+                    Tell me about the CEO of Amazon -> No
+                    What is tonsillitis? -> Yes
+                    What is Linear Regression? -> No
 
-        prompt = ChatPromptTemplate.from_messages(
+            If the question IS about these topics response with "Yes", otherwise respond with "No".
+            """
+
+        route_prompt = ChatPromptTemplate.from_messages(
             [
                 ("system", system),
-                ("human", "{question}"),
+                ("human", "User question: {question}"),
             ]
         )
 
-        chain = prompt | self.llm_with_tool
-        return chain
+        structured_llm = self.groq_llm.with_structured_output(GradeQuestion)
+        query_router = route_prompt | structured_llm
+
+        result = query_router.invoke({"question": question})
+        state["on_topic"] = result.score
+
+        return state
     
-    def retrieve(self, state):
-        """
-        retrieval from vector store
-        """
-        question = state["question"]
-
-        documents = self.chatbot.invoke(
-                        {"input": question},
-                        config={"configurable": {"session_id": "01"}
-                        }, 
-                    )["answer"]
-        return {"documents": documents, "question": question}
-
-    def web_search(self, state):
-        """
-        wiki search based on the re-phrased question.
-        """
-        question = state["question"]
-
-        # Wiki search
-        docs = self.wiki_query.invoke({"query": question})
-
-        return {"documents": docs, "question": question}
+    def on_topic_router(self, state: AgentState):
+        on_topic = state["on_topic"]
+        if on_topic.lower() == "yes":
+            return "on_topic"
+        return "off_topic"
     
-    def route_question(self, state):
-        """
-        Route question to wiki search or RAG.
-        """
+    def web_search(self, state: AgentState):
         question = state["question"]
-        source = self.chain.invoke({"question": question})
+
+        state["llm_output"] = self.wiki_query.invoke({"query": question})
+        return state
+    
+    def document_grader(self, state: AgentState):
+        docs = state["documents"]
+        question = state["question"]
+
+        system = """You are a grader assessing relevance of a retrieved document to a user question. \n
+            If the document contains keyword(s) or semantic meaning related to the question, grade it as relevant. \n
+            Give a binary score 'Yes' or 'No' score to indicate whether the document is relevant to the question."""
+
+        grade_prompt = ChatPromptTemplate.from_messages(
+            [
+                ("system", system),
+                (
+                    "human",
+                    "Retrieved document: \n\n {document} \n\n User question: {question}",
+                ),
+            ]
+        )
+
+        structured_llm = self.groq_llm.with_structured_output(GradeDocuments)
+        grader = grade_prompt | structured_llm
+
+        scores = []
+        for doc in docs:
+            result = grader.invoke({"document": doc, "question": question})
+            scores.append(result.score)
         
-        if source.datasource == "wiki_search":
-            print("---ROUTE QUESTION TO Wiki SEARCH---")
-            return "wiki_search"
-        elif source.datasource == "vectorstore":
-            print("---ROUTE QUESTION TO RAG---")
-            return "vectorstore"
+        state["grades"] = scores
+        return state
     
-    def build_dag(self):
-        workflow = StateGraph(GraphState)
+    def gen_router(self, state: AgentState):
+        grades = state["grades"]
 
-        # Define the nodes
-        workflow.add_node("web_search", self.web_search)  # web search
-        workflow.add_node("retrieve", self.retrieve)  # retrieve
+        if any(grade.lower() == "yes" for grade in grades):
+            return "generate"
+        else:
+            return "rewrite_query"
+        
+    def rewriter(self, state: AgentState):
+        question = state["question"]
+        system = """You a question re-writer that converts an input question to a better version that is optimized \n
+            for retrieval. Look at the input and try to reason about the underlying semantic intent / meaning."""
+        re_write_prompt = ChatPromptTemplate.from_messages(
+            [
+                ("system", system),
+                (
+                    "human",
+                    "Here is the initial question: \n\n {question} \n Formulate an improved question.",
+                ),
+            ]
+        )
+        question_rewriter = re_write_prompt | self.groq_llm | StrOutputParser()
+        output = question_rewriter.invoke({"question": question})
+        state["question"] = output
+        return state
 
-        # Build graph
+
+    def generate_answer(self, state: AgentState):
+        
+        question = state["question"]
+
+        result = self.chatbot.invoke(
+                    {"input": question},
+                    config={"configurable": {"session_id": "01"}
+                    }, 
+                )["answer"]
+        
+        state["llm_output"] = result
+        return state
+    
+    def build_graph(self):
+        workflow = StateGraph(AgentState)
+
+        workflow.add_node("topic_decision", self.question_classifier)
+        workflow.add_node("web_search", self.web_search)
+        workflow.add_node("retrieve_docs", self.retrieve_docs)
+        workflow.add_node("rewrite_query", self.rewriter)
+        workflow.add_node("generate_answer", self.generate_answer)
+        workflow.add_node("document_grader", self.document_grader)
+
+        workflow.add_edge("web_search", END)
+        workflow.add_edge("retrieve_docs", "document_grader")
         workflow.add_conditional_edges(
-            START,
-            self.route_question,
+            "topic_decision",
+            self.on_topic_router,
             {
-                "wiki_search": "web_search",
-                "vectorstore": "retrieve",
+                "on_topic": "retrieve_docs",
+                "off_topic": "web_search",
             },
         )
-        workflow.add_edge( "retrieve", END)
-        workflow.add_edge( "web_search", END)
+        workflow.add_conditional_edges(
+            "document_grader",
+            self.gen_router,
+            {
+                "generate": "generate_answer",
+                "rewrite_query": "rewrite_query",
+            },
+        )
+        workflow.add_edge("rewrite_query", "retrieve_docs")
+        workflow.add_edge("generate_answer", END)
 
-        # Compile
-        return workflow.compile()
+        workflow.set_entry_point("topic_decision")
+
+        self.app = workflow.compile()
 
     async def get_response(self, user_query: str):
         """Asynchronous method for processing user query through the chatbot."""
 
-        inputs = {
-            "question": user_query
-        }
-        for output in self.app.stream(inputs):
-            for key, value in output.items():
-                response = value["documents"]
-
-        return response
+        return self.app.invoke({"question": user_query})["llm_output"]
