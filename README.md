@@ -68,6 +68,9 @@ Built a RAG Medical Assistant with Fine-tuned Llama-3.1-8b model.
 
 - The Fine-tuned LLaMA3 model gave an **0.29 ROUGE score**
 
+- Chat demonstrating accurate RAG responses and **history-awareness**
 ![sample-chat](docs/Screenshot%202024-12-16%20160214.png)
 
+- Chat demonstrating **Agent** functionality: routing medical queries to RAG and non-medical queries to Wikipedia.
+![sample-chat](docs/Screenshot%202025-01-09%20194922.png)
 
